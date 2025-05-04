@@ -1,19 +1,21 @@
-# Use official Node.js image
-FROM node:18
+# Use slim image to reduce build time
+FROM node:18-slim
 
-# Set working directory in the container
+# Set working directory
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy only package files to leverage Docker cache
 COPY package*.json ./
-RUN npm install
 
-# Copy the rest of the application code
+# Install dependencies using npm ci for faster, cleaner install
+RUN npm ci
+
+# Now copy the full source code
 COPY . .
 
-# Expose port 3000 (default for your Node.js app)
+# Expose app port
 EXPOSE 3000
 
-# Run the Node.js app
-CMD ["npm", "start"]
+# Run the app
+CMD ["node", "app.js"]
 
