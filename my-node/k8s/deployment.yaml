@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: my-node-app
-        image: subin4123/my-node-app
+        image: subin4123/my-node-app:latest
         ports:
         - containerPort: 3000
 
