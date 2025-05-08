@@ -4,10 +4,11 @@ metadata:
   name: my-node-service
   namespace: monitoring
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: my-node-app
   ports:
-    - port: 3000
-      targetPort: 3000
+    - port: 3000         # external port (used by service)
+      targetPort: 3000   # port inside the container
+      nodePort: 30001    # exposed on your machine (browser access)
 
