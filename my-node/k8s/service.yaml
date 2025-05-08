@@ -1,11 +1,10 @@
-# service.yaml
 apiVersion: v1
 kind: Service
 metadata:
   name: my-node-service
   namespace: monitoring
 spec:
-  type: LoadBalancer       # ✅ Change this
+  type: LoadBalancer
   selector:
     app: my-node-app
   ports:
