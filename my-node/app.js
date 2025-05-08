@@ -6,7 +6,7 @@ app.get('/', (req, res) => {
   res.send('New version deployed');
 });
 
-app.listen(port, () => {
-  console.log(`App listening on http://localhost:${port}`);
+app.listen(3000, '0.0.0.0', () => {
+  console.log("App listening on http://0.0.0.0:3000");
 });
 
