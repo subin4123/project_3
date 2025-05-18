@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-node-app-canary
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-node-app
+      version: canary
+  template:
+    metadata:
+      labels:
+        app: my-node-app
+        version: canary
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "3002"
+    spec:
+      containers:
+        - name: my-node-app
+          image: subin4123/my-node-app:canary
+          ports:
+            - containerPort: 3002
+

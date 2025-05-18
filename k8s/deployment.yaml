@@ -5,17 +5,28 @@ metadata:
   namespace: monitoring
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   selector:
     matchLabels:
       app: my-node-app
+      version: stable
   template:
     metadata:
       labels:
         app: my-node-app
+        version: stable
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "3002"
     spec:
       containers:
         - name: my-node-app
           image: subin4123/my-node-app:latest
           ports:
-            - containerPort: 3000
+            - containerPort: 3002
 
