@@ -2,65 +2,87 @@ pipeline {
     agent any
 
     environment {
-        REPO_URL = 'https://github.com/subin4123/project_3.git'
-        BRANCH = 'main'
-        DOCKER_IMAGE_NAME = 'subin4123/my-node-app:latest'
-        CREDENTIALS_ID = '03e3a39f-5b17-4cc3-865a-81abb22d1604'
-        KUBE_NAMESPACE = 'monitoring'
+        DOCKER_HUB_CREDS = credentials('docker-hub-creds')
+        DOCKER_IMAGE = 'subin4123/my-node-app'
+        CANARY_IMAGE = 'subin4123/my-node-app:canary'
+        KUBECONFIG = '/var/lib/jenkins/.kube/config'
+    }
+
+    tools {
+        nodejs 'nodejs-18'
     }
 
     stages {
+
+        stage('Verify Node.js Setup') {
+            steps {
+                echo '🔍 Checking Node.js installation...'
+                sh 'which node'
+                sh 'node -v'
+                sh 'npm -v'
+            }
+        }
+
         stage('Checkout Code') {
             steps {
-                git url: "${REPO_URL}", branch: "${BRANCH}"
+                echo '📥 Cloning source code from GitHub...'
+                git branch: 'main', credentialsId: 'github-creds', url: 'https://github.com/subin4123/project_3.git'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Install Dependencies') {
             steps {
-                script {
-                    docker.build(DOCKER_IMAGE_NAME)
-                }
+                echo '📦 Installing Node.js dependencies...'
+                sh 'npm ci'
             }
         }
 
-        stage('Push to Docker Hub') {
+        stage('Build Docker Images') {
             steps {
-                withCredentials([usernamePassword(credentialsId: "${CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
-                    script {
-                        sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
-                        sh "docker push ${DOCKER_IMAGE_NAME}"
-                    }
+                echo "🐳 Building Docker images..."
+                sh "docker build -t $DOCKER_IMAGE ."
+                sh "docker build -t $CANARY_IMAGE ."
+            }
+        }
+
+        stage('Push Docker Images') {
+            steps {
+                echo '📤 Pushing Docker images to Docker Hub...'
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub-creds',
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
+                    sh """
+                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                        docker push $DOCKER_IMAGE
+                        docker push $CANARY_IMAGE
+                        docker logout
+                    """
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    sh 'kubectl apply -f my-node/k8s/deployment.yaml'
-                    sh 'kubectl apply -f my-node/k8s/service.yaml'
-                }
-            }
-        }
-
-        stage('Port Forward to Local IP') {
-            steps {
-                script {
-                    // Kill any existing port-forward running on port 3000
-                    sh "pkill -f 'kubectl port-forward service/my-node-service 3000:3000' || true"
-
-                    // Run port-forward in background to allow access via local IP
-                    sh "nohup kubectl port-forward service/my-node-service 3000:3000 -n ${KUBE_NAMESPACE} --address 0.0.0.0 > /dev/null 2>&1 &"
-                }
+                echo '🚀 Deploying stable and canary versions to Kubernetes...'
+                sh 'kubectl apply -f k8s/deployment.yaml'
+                sh 'kubectl apply -f k8s/service.yaml'
+                sh 'kubectl apply -f k8s/my-node-app-canary.yaml'
             }
         }
     }
 
     post {
-        always {
-            cleanWs()
+        success {
+            echo '✅ Pipeline completed successfully.'
+        }
+        failure {
+            echo '❌ Pipeline failed. Please check logs.'
+        }
+        cleanup {
+            echo '🧹 Cleaning up workspace...'
+            deleteDir()
         }
     }
 }
-
